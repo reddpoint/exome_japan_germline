@@ -1,0 +1,112 @@
+# vim: syntax=python tabstop=4 expandtab
+# coding: utf-8
+
+
+"""
+GATK based postprocessing of BAM files. Indels can be realigned and base qualities
+can be recalibrated.
+
+For usage, include this in your workflow.
+
+Expects a global variable config
+(see https://bitbucket.org/johanneskoester/snakemake/wiki/Documentation#markdown-header-configuration)
+of at least the
+following structure, assuming that the desired reference sequence is some genome
+to be found under the given path:
+
+{
+    "references": {
+        "genome": "path/to/genome.fasta"
+    },
+    "known_variants": {
+        "dbsnp": "path/to/dbsnp.vcf"
+    },
+    "params_gatk": ""
+}
+
+The "params_gatk" entry is optional.
+"""
+
+
+__author__ = "Johannes Köster (http://johanneskoester.bitbucket.org)"
+__license__ = "MIT"
+
+
+def _get_ref(wildcards):
+    return config["references"][wildcards.reference]
+
+
+rule gatk_realign_info:
+    input:
+        "mapping/{reference}/{prefix}.bam.bai",
+        ref=_get_ref,
+        bam="mapping/{reference}/{prefix}.bam"
+    output:
+        temp("mapping/{reference,[^/]+}/{prefix}.realign.intervals")
+    params:
+        custom=config.get("params_gatk", "")
+    log:
+        "mapping/log/{reference}/{prefix}.realign_info.log"
+    threads: 8
+    shell:
+        "gatk -T RealignerTargetCreator -R {input.ref} {params.custom} "
+        "-nt {threads} "
+        "-I {input.bam} -known {config[known_variants][dbsnp]} "
+        "-o {output} >& {log}"
+
+
+rule gatk_realign_bam:
+    input:
+        ref=_get_ref,
+        bam="mapping/{reference}/{prefix}.bam",
+        intervals="mapping/{reference}/{prefix}.realign.intervals"
+    output:
+        "mapping/{reference,[^/]+}/{prefix}.realigned.bam"
+    params:
+        custom=config.get("params_gatk", "")
+    log:
+        "mapping/log/{reference}/{prefix}.realign.log"
+    shell:
+        "gatk -T IndelRealigner -R {input.ref} {params.custom} "
+        "--disable_bam_indexing "
+        "-I {input.bam} -targetIntervals {input.intervals} "
+        "-o {output} >& {log}"
+
+
+rule gatk_recalibrate_info:
+    input:
+        "mapping/{reference}/{prefix}.bam.bai",
+        ref=_get_ref,
+        bam="mapping/{reference}/{prefix}.bam"
+    output:
+        temp("mapping/{reference,[^/]+}/{prefix}.recalibrate.grp")
+    params:
+        custom=config.get("params_gatk", "")
+    log:
+        "mapping/log/{reference}/{prefix}.recalibrate_info.log"
+    threads: 8
+    shell:
+        "gatk -T BaseRecalibrator -R {input.ref} {params.custom} "
+        "-nct {threads} "
+        "-I {input.bam} -knownSites {config[known_variants][dbsnp]} "
+        "-o {output} >& {log}"
+
+
+rule gatk_recalibrate_bam:
+    input:
+        ref=_get_ref,
+        bam="mapping/{reference}/{prefix}.bam",
+        grp="mapping/{reference}/{prefix}.recalibrate.grp"
+    output:
+        "mapping/{reference,[^/]+}/{prefix}.recalibrated.bam"
+    params:
+        custom=config.get("params_gatk", "")
+    log:
+        "mapping/log/{reference}/{prefix}.recalibrate.log"
+    threads: 8
+    shell:
+        "gatk -T PrintReads -R {input.ref} {params.custom} "
+        "-nct {threads} "
+        "--disable_bam_indexing "
+        "-I {input.bam} -BQSR {input.grp} "
+        "-o {output} >& {log}"
