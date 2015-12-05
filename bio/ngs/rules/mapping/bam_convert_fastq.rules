@@ -48,21 +48,25 @@ UNIT_TO_SAMPLE = {
 from snakemake.exceptions import MissingInputException
 
 
-rule bwa_mem_map:
+rule bam_fastq_bam:
     input:
         lambda wildcards: config["references"][wildcards.reference],
         lambda wildcards: config["units"][wildcards.unit]
     output:
         "mapping/{reference}/units/{unit}.bam"
-    params:
-        sample=lambda wildcards: UNIT_TO_SAMPLE[wildcards.unit],
-        custom=config.get("params_bwa_mem", "")
     log:
         "mapping/log/{reference}/{unit}.log"
     threads: 8
     shell:
-        "bwa mem {params.custom} "
-        r"-R '@RG\tID:{wildcards.unit}\t"
-        "SM:{params.sample}\tPL:{config[platform]}' "
-        "-t {threads} {input}  2> {log} "
-        "| samtools view -Sbh - > {output}"
+        """
+        module load bwa
+        module load samtools
+        module load bedtools
+
+        READGROUP=$(samtools view -H {input.bam} |grep @RG)
+
+        samtools bamshuf -uOn 128 {input.bam} tmp |
+        bamToFastq -i - -fq /dev/stdout -fq2 /dev/stdout |
+        bwa mem -M -R $READGROUP -t 4 -p {input.ref} - 2>log |
+        samtools view -Sbh - > {output}
+        """

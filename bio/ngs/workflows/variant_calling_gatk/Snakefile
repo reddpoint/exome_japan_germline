@@ -47,10 +47,10 @@ __license__ = "MIT"
 
 configfile: "config.json"
 
-include_prefix="https://bitbucket.org/johanneskoester/snakemake-workflows/raw/master"
+include_prefix="/data/cooperjam/snakemake_workflows/Exome/GATK_germline_japan"
 
 include:
-    include_prefix + "/bio/ngs/rules/mapping/bwa_mem.rules"
+    include_prefix + "/bio/ngs/rules/mapping/bam_convert_fastq.rules"
 include:
     include_prefix + "/bio/ngs/rules/mapping/samfiles.rules"
 include:
