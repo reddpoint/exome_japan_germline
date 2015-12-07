@@ -73,14 +73,16 @@ rule gatk_haplotype_caller:
         gvcf="variant_calling/{reference}/{sample}.gvcf",
         idx="variant_calling/{reference}/{sample}.gvcf.idx"
     params:
-        custom=config.get("params_gatk", "")
+        interval=config.get("interval", "")
     log:
         "variant_calling/log/{reference}/{sample}.genotype_info.log"
     threads: 2  # haplotype caller currently does not reliably use more than 2 threads
     run:
         bams = _gatk_multi_arg("-I", input.bams)
         shell(
-            "gatk -T HaplotypeCaller -R {input.ref} {bams} {params.custom} "
+            "java -Xmx8g -Djava.io.tmpdir=/lscratch/${prefix} -jar $GATK_HOME/GenomeAnalysisTK.jar"
+            "-T HaplotypeCaller -R {input.ref} {bams} "
+            "-L {params.interval}"
             "--emitRefConfidence GVCF --variant_index_type LINEAR "
             "--heterozygosity {config[heterozygosity]} "
             "--indel_heterozygosity {config[indel_heterozygosity]} "
@@ -104,6 +106,7 @@ rule gatk_genotyping:
     run:
         gvcfs = _gatk_multi_arg("--variant", input.gvcfs)
         shell(
-            "gatk -T GenotypeGVCFs {gvcfs} -nt {threads} {params.custom} "
+            "java -Xmx8g -Djava.io.tmpdir=/lscratch/${prefix} -jar $GATK_HOME/GenomeAnalysisTK.jar"
+            "-T GenotypeGVCFs {gvcfs} -nt {threads} {params.custom} "
             "-R {input.ref} "
             "--dbsnp {config[known_variants][dbsnp]} -o {output} >& {log}")

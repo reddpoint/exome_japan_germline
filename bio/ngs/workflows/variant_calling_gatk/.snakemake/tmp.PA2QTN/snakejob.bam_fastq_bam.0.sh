@@ -1,0 +1,5 @@
+#!/bin/sh
+# properties = {"output": ["mapping/genome/units/NIH075_normal.bam"], "threads": 8, "input": ["/fdb/GATK_resource_bundle/b37/human_g1k_v37.fasta", "/data/cooperjam/Aplastic/NIH075_normal.bam"], "rule": "bam_fastq_bam", "local": false, "resources": {}, "params": {}}
+cd /spin1/users/cooperjam/snakemake_workflows/Exome/GATK_germline_japan/bio/ngs/workflows/variant_calling_gatk && /usr/local/Anaconda/envs/py3.4.3/bin/snakemake --snakefile /spin1/users/cooperjam/snakemake_workflows/Exome/GATK_germline_japan/bio/ngs/workflows/variant_calling_gatk/Snakefile --force -j --keep-target-files --wait-for-files /fdb/GATK_resource_bundle/b37/human_g1k_v37.fasta /data/cooperjam/Aplastic/NIH075_normal.bam --latency-wait 60 --benchmark-repeats 1   --nocolor --notemp --quiet --nolock mapping/genome/units/NIH075_normal.bam --allowed-rules bam_fastq_bam  && touch "/spin1/users/cooperjam/snakemake_workflows/Exome/GATK_germline_japan/bio/ngs/workflows/variant_calling_gatk/.snakemake/tmp.PA2QTN/0.jobfinished" || touch "/spin1/users/cooperjam/snakemake_workflows/Exome/GATK_germline_japan/bio/ngs/workflows/variant_calling_gatk/.snakemake/tmp.PA2QTN/0.jobfailed"
+exit 0
+

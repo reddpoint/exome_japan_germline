@@ -45,28 +45,31 @@ UNIT_TO_SAMPLE = {
     for unit in units}
 
 
+
 from snakemake.exceptions import MissingInputException
 
 
 rule bam_fastq_bam:
     input:
-        lambda wildcards: config["references"][wildcards.reference],
-        lambda wildcards: config["units"][wildcards.unit]
+        ref=lambda wildcards: config["references"][wildcards.reference],
+        bam=lambda wildcards: config["units"][wildcards.unit]
     output:
         "mapping/{reference}/units/{unit}.bam"
     log:
         "mapping/log/{reference}/{unit}.log"
     threads: 8
+    benchmark:
+        "benchmarks/bam_fastq_bam/{unit}.json"
     shell:
         """
         module load bwa
         module load samtools
-        module load bedtools
-
+        
         READGROUP=$(samtools view -H {input.bam} |grep @RG)
 
+        
         samtools bamshuf -uOn 128 {input.bam} tmp |
-        bamToFastq -i - -fq /dev/stdout -fq2 /dev/stdout |
-        bwa mem -M -R $READGROUP -t 4 -p {input.ref} - 2>log |
+        samtools bam2fq  -n - |
+        bwa mem -M -R \"$READGROUP\" -t 4 -p {input.ref} - 2>log |
         samtools view -Sbh - > {output}
         """

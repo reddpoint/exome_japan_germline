@@ -32,6 +32,7 @@ __author__ = "Johannes Köster (http://johanneskoester.bitbucket.org)"
 __license__ = "MIT"
 
 
+
 def _get_ref(wildcards):
     return config["references"][wildcards.reference]
 
@@ -44,12 +45,15 @@ rule gatk_realign_info:
     output:
         temp("mapping/{reference,[^/]+}/{prefix}.realign.intervals")
     params:
-        custom=config.get("params_gatk", "")
+        interval=config.get("interval", "")
     log:
         "mapping/log/{reference}/{prefix}.realign_info.log"
     threads: 8
     shell:
-        "gatk -T RealignerTargetCreator -R {input.ref} {params.custom} "
+        "module load GATK"
+        "java -Xmx8g -Djava.io.tmpdir=/lscratch/{{prefix}} -jar $GATK_HOME/GenomeAnalysisTK.jar"
+        "-T RealignerTargetCreator -R {input.ref} {params.interval} "
+        "-L {params.interval}"
         "-nt {threads} "
         "-I {input.bam} -known {config[known_variants][dbsnp]} "
         "-o {output} >& {log}"
@@ -62,12 +66,12 @@ rule gatk_realign_bam:
         intervals="mapping/{reference}/{prefix}.realign.intervals"
     output:
         "mapping/{reference,[^/]+}/{prefix}.realigned.bam"
-    params:
-        custom=config.get("params_gatk", "")
     log:
         "mapping/log/{reference}/{prefix}.realign.log"
     shell:
-        "gatk -T IndelRealigner -R {input.ref} {params.custom} "
+        "module load GATK"
+        "java -Xmx8g -Djava.io.tmpdir=/lscratch/{{prefix}} -jar $GATK_HOME/GenomeAnalysisTK.jar"
+        "-T IndelRealigner -R {input.ref}  "
         "--disable_bam_indexing "
         "-I {input.bam} -targetIntervals {input.intervals} "
         "-o {output} >& {log}"
@@ -81,12 +85,14 @@ rule gatk_recalibrate_info:
     output:
         temp("mapping/{reference,[^/]+}/{prefix}.recalibrate.grp")
     params:
-        custom=config.get("params_gatk", "")
+        interval=config.get("interval", "")
     log:
         "mapping/log/{reference}/{prefix}.recalibrate_info.log"
     threads: 8
     shell:
-        "gatk -T BaseRecalibrator -R {input.ref} {params.custom} "
+        "module load GATK"
+        "java -Xmx8g -Djava.io.tmpdir=/lscratch/{{prefix}} -jar $GATK_HOME/GenomeAnalysisTK.jar"
+        "-T BaseRecalibrator -R {input.ref} -L {params.interval} "
         "-nct {threads} "
         "-I {input.bam} -knownSites {config[known_variants][dbsnp]} "
         "-o {output} >& {log}"
@@ -105,7 +111,9 @@ rule gatk_recalibrate_bam:
         "mapping/log/{reference}/{prefix}.recalibrate.log"
     threads: 8
     shell:
-        "gatk -T PrintReads -R {input.ref} {params.custom} "
+        "module load GATK"
+        "java -Xmx8g -Djava.io.tmpdir=/lscratch/{{prefix}} -jar $GATK_HOME/GenomeAnalysisTK.jar"
+        "-T PrintReads -R {input.ref} {params.custom} "
         "-nct {threads} "
         "--disable_bam_indexing "
         "-I {input.bam} -BQSR {input.grp} "

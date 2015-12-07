@@ -1,0 +1,12 @@
+
+        module load bwa
+        module load samtools
+        module load bedtools
+
+        READGROUP=$(samtools view -H /data/cooperjam/Aplastic/NIH075_normal.bam |grep @RG)
+
+        samtools bamshuf -uOn 128 /data/cooperjam/Aplastic/NIH075_normal.bam tmp |
+        bamToFastq -i - -fq /dev/stdout -fq2 /dev/stdout |
+        bwa mem -M -R $READGROUP -t 4 -p /fdb/GATK_resource_bundle/b37/human_g1k_v37.fasta - 2>log |
+        samtools view -Sbh - > mapping/genome/units/NIH075_normal.bam
+        

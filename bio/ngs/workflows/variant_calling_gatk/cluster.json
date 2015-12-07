@@ -1,0 +1,10 @@
+{
+    "__default__" :
+    {
+        "time" : "02:00:00",
+        "n" : 1,
+        "partition" : "norm",
+        "gres":"150G",
+        "mem":"10G"
+    }
+}
