@@ -66,4 +66,4 @@ include:
 
 rule all:
     input:
-        "variant_calling/genome/all.snp_recalibrated.indel_recalibrated.vcf"
+        "variant_calling/all.snp_recalibrated.indel_recalibrated.vcf"
