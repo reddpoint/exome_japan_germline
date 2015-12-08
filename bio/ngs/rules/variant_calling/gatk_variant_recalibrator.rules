@@ -57,20 +57,22 @@ def _get_recal_params(wildcards):
 rule gatk_variant_recalibration:
     input:
         config["known_variants"].values(),
-        ref=_get_ref,
-        vcf="variant_calling/{reference}/{prefix}.vcf"
+        ref=config["references"],
+        vcf="variant_calling/{prefix}.vcf"
     output:
-        recal=temp("variant_calling/{reference}/{prefix}.{type,(snp|indel)}.recal"),
-        tranches=temp("variant_calling/{reference}/{prefix}.{type,(snp|indel)}.tranches"),
-        plotting=temp("variant_calling/{reference}/{prefix}.{type,(snp|indel)}.plotting.R")
+        recal=temp("lscratch/variant_calling/{prefix}.{type,(snp|indel)}.recal"),
+        tranches=temp("lscratch/variant_calling/{prefix}.{type,(snp|indel)}.tranches"),
+        plotting=temp("lscratch/variant_calling/{prefix}.{type,(snp|indel)}.plotting.R")
     params:
         _get_recal_params,
         config.get("params_gatk", "")
     log:
-        "variant_calling/log/{reference}/{prefix}.{type}_recalibrate_info.log"
+        "variant_calling/log/{prefix}.{type}_recalibrate_info.log"
     threads: 8
     shell:
-        "gatk -T VariantRecalibrator -R {input.ref} "
+        "module load GATK"
+        "java -Xmx8g -Djava.io.tmpdir=/lscratch/{{prefix}} -jar $GATK_HOME/GenomeAnalysisTK.jar"
+        "-T VariantRecalibrator -R {input.ref} "
         "-input {input.vcf} "
         "{params} -nt {threads} "
         "-tranche 100.0 -tranche 99.9 -tranche 99.0 -tranche 90.0 "
@@ -81,20 +83,21 @@ rule gatk_variant_recalibration:
 
 rule gatk_apply_variant_recalibration:
     input:
-        ref=_get_ref,
-        vcf="variant_calling/{reference}/{prefix}.vcf",
-        recal="variant_calling/{reference}/{prefix}.{type}.recal",
-        tranches="variant_calling/{reference}/{prefix}.{type}.tranches"
+        ref=config["references"],
+        vcf="lscratch/variant_calling/{prefix}.vcf",
+        recal="lscratch/variant_calling/{prefix}.{type}.recal",
+        tranches="lscratch/variant_calling/{prefix}.{type}.tranches"
     output:
-        "variant_calling/{reference}/{prefix}.{type,(snp|indel)}_recalibrated.vcf"
+        "variant_calling/{prefix}.{type,(snp|indel)}_recalibrated.vcf"
     params:
-        mode=lambda wildcards: wildcards.type.upper(),
-        custom=config.get("params_gatk", "")
+        mode=lambda wildcards: wildcards.type.upper()
     log:
-        "variant_calling/log/{reference}/{prefix}.{type}_recalibrate.log"
+        "variant_calling/log/{prefix}.{type}_recalibrate.log"
     threads: 8
     shell:
-        "gatk -T ApplyRecalibration -R {input.ref} -nt {threads} "
-        "-input {input.vcf} -mode {params.mode} {params.custom} "
+        "module load GATK"
+        "java -Xmx8g -Djava.io.tmpdir=/lscratch/{{prefix}} -jar $GATK_HOME/GenomeAnalysisTK.jar"
+        "-T ApplyRecalibration -R {input.ref} -nt {threads} "
+        "-input {input.vcf} -mode {params.mode} "
         "-recalFile {input.recal} --ts_filter_level 99.9 "
         "-tranchesFile {input.tranches} -o {output} >& {log}"

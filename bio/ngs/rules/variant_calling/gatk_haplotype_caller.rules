@@ -54,7 +54,7 @@ def _get_ref(wildcards):
 def _sample_to_units(pattern):
     def apply(wildcards):
         return expand(
-            pattern, reference=wildcards.reference,
+            pattern,
             unit=config["samples"][wildcards.sample])
     return apply
 
@@ -66,21 +66,21 @@ def _gatk_multi_arg(flag, files):
 
 rule gatk_haplotype_caller:
     input:
-        _sample_to_units("mapping/{reference}/units/{unit}.sorted.realigned.recalibrated.bam.bai"),
-        ref=_get_ref,
-        bams=_sample_to_units("mapping/{reference}/units/{unit}.sorted.realigned.recalibrated.bam")
+        _sample_to_units("mapping/{unit}.sorted.realigned.recalibrated.bam.bai"),
+        ref=config["references"],
+        bams=_sample_to_units("mapping/{unit}.sorted.realigned.recalibrated.bam")
     output:
-        gvcf="variant_calling/{reference}/{sample}.gvcf",
-        idx="variant_calling/{reference}/{sample}.gvcf.idx"
+        gvcf="variant_calling/{sample}.gvcf",
+        idx="variant_calling/{sample}.gvcf.idx"
     params:
         interval=config.get("interval", "")
     log:
-        "variant_calling/log/{reference}/{sample}.genotype_info.log"
+        "variant_calling/log/{sample}.genotype_info.log"
     threads: 2  # haplotype caller currently does not reliably use more than 2 threads
     run:
         bams = _gatk_multi_arg("-I", input.bams)
         shell(
-            "java -Xmx8g -Djava.io.tmpdir=/lscratch/${prefix} -jar $GATK_HOME/GenomeAnalysisTK.jar"
+            "java -Xmx8g -Djava.io.tmpdir=/lscratch/${{prefix}} -jar $GATK_HOME/GenomeAnalysisTK.jar"
             "-T HaplotypeCaller -R {input.ref} {bams} "
             "-L {params.interval}"
             "--emitRefConfidence GVCF --variant_index_type LINEAR "
@@ -92,21 +92,21 @@ rule gatk_haplotype_caller:
 
 rule gatk_genotyping:
     input:
-        ref=_get_ref,
+        ref=config["references"],
         gvcfs=expand(
-            "variant_calling/{{reference}}/{sample}.gvcf",
+            "variant_calling/{sample}.gvcf",
             sample=config["samples"])
     output:
-        "variant_calling/{reference}/all.vcf"
+        "variant_calling/all.vcf"
     params:
         custom=config.get("params_gatk", "")
     log:
-        "variant_calling/log/{reference}/all.genotype.log"
+        "variant_calling/log/all.genotype.log"
     threads: 16
     run:
         gvcfs = _gatk_multi_arg("--variant", input.gvcfs)
         shell(
-            "java -Xmx8g -Djava.io.tmpdir=/lscratch/${prefix} -jar $GATK_HOME/GenomeAnalysisTK.jar"
+            "java -Xmx8g -Djava.io.tmpdir=/lscratch/${{prefix}} -jar $GATK_HOME/GenomeAnalysisTK.jar"
             "-T GenotypeGVCFs {gvcfs} -nt {threads} {params.custom} "
             "-R {input.ref} "
             "--dbsnp {config[known_variants][dbsnp]} -o {output} >& {log}")

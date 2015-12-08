@@ -51,12 +51,12 @@ from snakemake.exceptions import MissingInputException
 
 rule bam_fastq_bam:
     input:
-        ref=lambda wildcards: config["references"][wildcards.reference],
+        ref=lambda wildcards: config["align_ref"][wildcards.reference],
         bam=lambda wildcards: config["units"][wildcards.unit]
     output:
-        "mapping/{reference}/units/{unit}.bam"
+        temp("mapping/{unit}/{unit}.bam")
     log:
-        "mapping/log/{reference}/{unit}.log"
+        "mapping/log/{unit}.log"
     threads: 8
     benchmark:
         "benchmarks/bam_fastq_bam/{unit}.json"
